@@ -1,0 +1,91 @@
+{
+  "bookings": [
+    {
+      "booking_id": 1,
+      "type": "attraction",
+      "location": "Paris",
+      "metadata": {
+        "name": "Eiffel Tower",
+        "category": "landmark",
+        "rating": 4.8,
+        "price": 15
+      }
+    },
+    {
+      "booking_id": 1,
+      "type": "attraction",
+      "location": "Paris",
+      "metadata": {
+        "name": "Eiffel Tower",
+        "category": "landmark",
+        "rating": 4.8,
+        "price": 15
+      }
+    },
+    {
+      "booking_id": 9,
+      "type": "attraction",
+      "location": null,
+      "metadata": {
+        "name": "Big Ben",
+        "category": "landmark",
+        "rating": 4.6,
+        "price": 0
+      }
+    },
+    {
+      "booking_id": 10,
+      "type": null,
+      "location": "Tokyo",
+      "metadata": {
+        "name": "Senso-ji Temple",
+        "category": "historical",
+        "rating": 4.9,
+        "price": 5
+      }
+    },
+    {
+      "booking_id": 11,
+      "type": "hotel",
+      "location": "Dubai",
+      "metadata": {
+        "name": null,
+        "category": null,
+        "rating": null,
+        "price": 900
+      }
+    },
+    {
+      "booking_id": 12,
+      "type": "ATTRACTION",
+      "location": "amsterdam",
+      "metadata": {
+        "name": "Rijksmuseum",
+        "category": "museum",
+        "rating": 9.5,
+        "price": -10
+      }
+    },
+    {
+      "booking_id": 13,
+      "type": "attraction",
+      "location": "New York",
+      "metadata": {
+        "name": "Statue of Liberty",
+        "category": "landmark",
+        "rating": 4.7,
+        "price": "free"
+      }
+    },
+    {
+      "booking_id": 14,
+      "location": "Berlin",
+      "metadata": {
+        "name": "Brandenburg Gate",
+        "category": "historical",
+        "rating": 4.8,
+        "price": 0
+      }
+    }
+  ]
+}
