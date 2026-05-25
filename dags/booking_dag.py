@@ -1,14 +1,18 @@
 from airflow.sdk import dag, task
 from datetime import datetime
+import subprocess
+import os
 
 DATA_DIR = '/Users/pujaverma/Desktop/BookingSolution/data'
+DBT_DIR = '/Users/pujaverma/Desktop/BookingSolution/booking_dbt'
+TESTS_DIR = '/Users/pujaverma/Desktop/BookingSolution'
 SNOWFLAKE_CONN_ID = 'snowflake_default'
 
 
 @dag(
     dag_id='booking_elt_pipeline',
     start_date=datetime(2026, 5, 1),
-    schedule='@daily',
+    schedule='*/30 * * * *',   # every 30 minutes
     catchup=False,
     tags=['booking', 'elt']
 )
@@ -24,14 +28,7 @@ def booking_elt_pipeline():
 
     @task()
     def extract_and_load():
-        """
-        PySpark:
-        - Extract all JSON files
-        - Flatten nested structure
-        - Split duplicates → raw.bookings_duplicates
-        - Split invalid   → raw.bookings_invalid
-        - Load clean data → raw.bookings
-        """
+        """PySpark: extract, deduplicate, validate and load to Snowflake raw"""
         import sys
         sys.path.insert(0, '/Users/pujaverma/Desktop/BookingSolution')
         from ingestion.spark_extractor import run
@@ -52,7 +49,60 @@ def booking_elt_pipeline():
 
         run(DATA_DIR, snowflake_options)
 
-    setup() >> extract_and_load()
+    @task()
+    def dbt_run_staging():
+        """Run dbt staging models only"""
+        result = subprocess.run(
+            ['dbt', 'run', '--select', 'staging'],
+            cwd=DBT_DIR,
+            capture_output=True,
+            text=True
+        )
+        print(result.stdout)
+        if result.returncode != 0:
+            raise Exception(f"dbt staging run failed:\n{result.stderr}")
+
+    @task()
+    def dbt_test_staging():
+        """Run dbt tests on staging — quality gate"""
+        result = subprocess.run(
+            ['dbt', 'test', '--select', 'staging'],
+            cwd=DBT_DIR,
+            capture_output=True,
+            text=True
+        )
+        print(result.stdout)
+        if result.returncode != 0:
+            raise Exception(f"dbt staging tests failed:\n{result.stderr}")
+
+    @task()
+    def run_pytest():
+        """Run pytest integration tests — quality gate"""
+        result = subprocess.run(
+            ['python', '-m', 'pytest', 'tests/test_spark_extractor.py', '-v'],
+            cwd=TESTS_DIR,
+            capture_output=True,
+            text=True
+        )
+        print(result.stdout)
+        if result.returncode != 0:
+            raise Exception(f"pytest failed:\n{result.stderr}")
+
+    @task()
+    def dbt_run_marts():
+        """Run dbt marts — only if all quality gates passed"""
+        result = subprocess.run(
+            ['dbt', 'run', '--select', 'marts'],
+            cwd=DBT_DIR,
+            capture_output=True,
+            text=True
+        )
+        print(result.stdout)
+        if result.returncode != 0:
+            raise Exception(f"dbt marts run failed:\n{result.stderr}")
+
+    # Pipeline flow with quality gates
+    setup() >> extract_and_load() >> dbt_run_staging() >> dbt_test_staging() >> run_pytest() >> dbt_run_marts()
 
 
 booking_elt_pipeline()
