@@ -1,0 +1,9 @@
+version: 2
+
+sources:
+  - name: raw
+    database: booking_obj
+    schema: raw
+    tables:
+      - name: bookings
+        description: "Raw bookings data loaded by Airflow"

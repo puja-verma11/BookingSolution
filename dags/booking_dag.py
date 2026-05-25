@@ -1,57 +1,58 @@
 from airflow.sdk import dag, task
 from datetime import datetime
 
+DATA_DIR = '/Users/pujaverma/Desktop/BookingSolution/data'
+SNOWFLAKE_CONN_ID = 'snowflake_default'
+
+
 @dag(
-    dag_id = 'booking_elt_pipeline',
-    start_date = datetime(2026, 5, 1),
-    schedule = '@daily',
-    catchup = False,
-    tags = ['booking', 'elt']    
+    dag_id='booking_elt_pipeline',
+    start_date=datetime(2026, 5, 1),
+    schedule='@daily',
+    catchup=False,
+    tags=['booking', 'elt']
 )
+def booking_elt_pipeline():
 
-def booking_elt_first_pipeline():
     @task()
-    def extract():
-        import json
-        import os
-        data_dir = '/Users/pujaverma/Desktop/BookingSolution/data'
-        all_bookings = []
-        for filename in os.listdir(data_dir):
-            if filename.endswith('.json'):
-                filepath = os.path.join(data_dir, filename)
-                with open(filepath, 'r') as f:
-                    data = json.load(f)
-                    all_bookings.extend(data['bookings'])
+    def setup():
+        """Create Snowflake schemas and tables if not exists"""
+        import sys
+        sys.path.insert(0, '/Users/pujaverma/Desktop/BookingSolution')
+        from ingestion.setup_snowflake import setup_snowflake
+        setup_snowflake()
 
-        print(f'extracted{len(all_bookings)} bookings')
-        return all_bookings
-    
     @task()
-    def load(bookings :list):
-        from airflow.providers.snowflake.hooks.snowflake import SnowflakeHook 
-        
-        hook = SnowflakeHook(snowflake_conn_id = 'snowflake_default')
-        conn = hook.get_conn()
-        cursor = conn.cursor()
-        cursor.execute("TRUNCATE TABLE booking_obj.raw.bookings")
-        for b in bookings:
-            cursor.execute('''
-             insert into booking_obj.raw.bookings (booking_id,type,location,name,category,rating,price)
-             values (%s,%s,%s,%s,%s,%s,%s) ''',
-             (
-                b['booking_id'],
-                b['type'],
-                b['location'],
-                b['metadata']['name'],
-                b['metadata'].get('category', None),
-                b['metadata']['rating'],
-                b['metadata']['price']
-            ))
-        cursor.close()
-        conn.close()
-        print(f'hello the bookings are: {len(bookings)} booking loaded into snowflake')
+    def extract_and_load():
+        """
+        PySpark:
+        - Extract all JSON files
+        - Flatten nested structure
+        - Split duplicates → raw.bookings_duplicates
+        - Split invalid   → raw.bookings_invalid
+        - Load clean data → raw.bookings
+        """
+        import sys
+        sys.path.insert(0, '/Users/pujaverma/Desktop/BookingSolution')
+        from ingestion.spark_extractor import run
+        from airflow.providers.snowflake.hooks.snowflake import SnowflakeHook
 
-    raw = extract()
-    load(raw)
+        hook = SnowflakeHook(snowflake_conn_id=SNOWFLAKE_CONN_ID)
+        conn_params = hook.get_connection(SNOWFLAKE_CONN_ID)
 
-booking_elt_first_pipeline()
+        snowflake_options = {
+            "sfURL": f"{conn_params.extra_dejson.get('account')}.snowflakecomputing.com",
+            "sfUser": conn_params.login,
+            "sfPassword": conn_params.password,
+            "sfDatabase": conn_params.extra_dejson.get('database', 'booking_obj'),
+            "sfSchema": "raw",
+            "sfWarehouse": conn_params.extra_dejson.get('warehouse', 'COMPUTE_WH'),
+            "sfRole": conn_params.extra_dejson.get('role', 'SYSADMIN')
+        }
+
+        run(DATA_DIR, snowflake_options)
+
+    setup() >> extract_and_load()
+
+
+booking_elt_pipeline()

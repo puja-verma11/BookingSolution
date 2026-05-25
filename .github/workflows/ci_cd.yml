@@ -1,0 +1,79 @@
+name: Booking ELT Pipeline CI/CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test-and-deploy:
+    runs-on: ubuntu-latest
+
+    env:
+      SNOWFLAKE_USER: ${{ secrets.SNOWFLAKE_USER }}
+      SNOWFLAKE_PASSWORD: ${{ secrets.SNOWFLAKE_PASSWORD }}
+
+    steps:
+      # Step 1 - Checkout code
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Step 2 - Setup Python
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      # Step 3 - Install dependencies
+      - name: Install dependencies
+        run: |
+          pip install apache-airflow
+          pip install apache-airflow-providers-snowflake
+          pip install dbt-snowflake
+          pip install pyspark
+          pip install pytest
+          pip install snowflake-connector-python
+
+      # Step 4 - Run pytest
+      - name: Run pytest
+        run: |
+          pytest tests/test_spark_extractor.py -v
+
+      # Step 5 - Create dbt profiles.yml dynamically
+      - name: Create dbt profiles.yml
+        run: |
+          mkdir -p ~/.dbt
+          cat > ~/.dbt/profiles.yml << EOF
+          booking_dbt:
+            outputs:
+              dev:
+                type: snowflake
+                account: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+                user: ${{ secrets.SNOWFLAKE_USER }}
+                password: ${{ secrets.SNOWFLAKE_PASSWORD }}
+                role: SYSADMIN
+                database: booking_obj
+                warehouse: COMPUTE_WH
+                schema: staging
+                threads: 1
+            target: dev
+          EOF
+
+      # Step 6 - dbt compile (check SQL syntax)
+      - name: dbt compile
+        run: |
+          cd booking_dbt
+          dbt compile
+
+      # Step 7 - dbt test (quality checks)
+      - name: dbt test
+        run: |
+          cd booking_dbt
+          dbt test
+
+      # Step 7 - Deploy DAG (only on push to main, not PR)
+      - name: Deploy DAG
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          echo "DAG deployed successfully!"

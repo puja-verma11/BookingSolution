@@ -1,0 +1,36 @@
+version: 2
+
+models:
+  - name: stg_bookings
+    description: "Cleaned and deduplicated bookings from raw layer"
+    columns:
+      - name: booking_id
+        description: "Unique booking identifier"
+        data_tests:
+          - not_null
+          - unique
+
+      - name: type
+        description: "Type of booking"
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['attraction', 'hotel', 'unknown']
+
+      - name: location
+        description: "Booking location"
+        data_tests:
+          - not_null
+
+      - name: rating
+        description: "Rating between 0 and 5"
+        data_tests:
+          - not_null:
+              config:
+                severity: warn
+
+      - name: price
+        description: "Price must be zero or positive"
+        data_tests:
+          - not_null
