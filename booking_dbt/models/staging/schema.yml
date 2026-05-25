@@ -16,7 +16,8 @@ models:
           - not_null
           - accepted_values:
               arguments:
-                values: ['attraction', 'hotel', 'unknown']
+                - accepted_values:
+                  values: ['attraction', 'hotel', 'restaurant', 'flight', 'unknown']
 
       - name: location
         description: "Booking location"
