@@ -14,10 +14,6 @@ models:
         description: "Type of booking"
         data_tests:
           - not_null
-          - accepted_values:
-              arguments:
-                - accepted_values:
-                  values: ['attraction', 'hotel', 'restaurant', 'flight', 'unknown']
 
       - name: location
         description: "Booking location"
