@@ -180,6 +180,37 @@ airflow standalone
 
 ---
 
+## PySpark + Pandas Collaboration
+
+PySpark and pandas work together in the ingestion layer:
+
+```
+JSON files
+    ↓
+PySpark reads & processes   (distributed, handles GBs)
+    ↓
+.toPandas()                 (converts to pandas DataFrame)
+    ↓
+pandas → Snowflake          (row by row insert)
+```
+
+| | PySpark | Pandas |
+|---|---|---|
+| **Good at** | Processing huge files, parallel processing | Small data, row-by-row operations |
+| **Memory** | Distributed across machines | Single machine RAM |
+| **Snowflake loading** | Needs JAR connector (complex) | Simple `snowflake.connector` |
+
+**Why `.replace({np.nan: None})`?**
+When PySpark converts to pandas, empty values become `NaN`. Snowflake only understands `None` (SQL NULL), so we convert:
+```
+PySpark null → pandas NaN → .replace({np.nan: None}) → Snowflake NULL
+```
+
+**Why not PySpark all the way to Snowflake?**
+You can — but it requires a Spark-Snowflake JAR connector (Java library), version compatibility, and extra config. For this project size, `toPandas()` + `snowflake.connector` is simpler and works perfectly.
+
+---
+
 ## CI/CD Pipeline
 
 Every push to `main` triggers:
