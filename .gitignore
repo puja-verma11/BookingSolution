@@ -11,3 +11,9 @@ wheels/
 
 # Environment variables — never commit credentials!
 .env
+
+# dbt logs and artifacts
+booking_dbt/logs/
+booking_dbt/target/
+booking_dbt/dbt_packages/
+logs/
