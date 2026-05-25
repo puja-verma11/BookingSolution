@@ -40,17 +40,33 @@ jobs:
         run: |
           pytest tests/test_spark_extractor.py -v
 
-      # Step 5 - dbt compile (check SQL syntax)
+      # Step 5 - Create dbt profiles.yml dynamically
+      - name: Create dbt profiles.yml
+        run: |
+          mkdir -p ~/.dbt
+          cat > ~/.dbt/profiles.yml << EOF
+          booking_dbt:
+            outputs:
+              dev:
+                type: snowflake
+                account: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+                user: ${{ secrets.SNOWFLAKE_USER }}
+                password: ${{ secrets.SNOWFLAKE_PASSWORD }}
+                role: SYSADMIN
+                database: booking_obj
+                warehouse: COMPUTE_WH
+                schema: staging
+                threads: 1
+            target: dev
+          EOF
+
+      # Step 6 - dbt compile (check SQL syntax)
       - name: dbt compile
         run: |
           cd booking_dbt
           dbt compile
-        env:
-          DBT_SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
-          DBT_SNOWFLAKE_USER: ${{ secrets.SNOWFLAKE_USER }}
-          DBT_SNOWFLAKE_PASSWORD: ${{ secrets.SNOWFLAKE_PASSWORD }}
 
-      # Step 6 - dbt test (quality checks)
+      # Step 7 - dbt test (quality checks)
       - name: dbt test
         run: |
           cd booking_dbt
