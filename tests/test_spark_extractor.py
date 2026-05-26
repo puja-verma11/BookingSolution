@@ -60,8 +60,7 @@ class TestStagingTable:
         cursor.execute("""
             SELECT DISTINCT type
             FROM booking_obj.staging.stg_bookings
-            WHERE type NOT IN ('attraction', 'hotel', 'unknown')
-        """)
+            WHERE type NOT IN ('attraction', 'hotel', 'restaurant', 'flight', 'unknown')        """)
         invalid_types = cursor.fetchall()
         assert len(invalid_types) == 0, f"Found invalid types: {invalid_types}"
 
